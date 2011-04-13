@@ -29,10 +29,14 @@ class Capybara::Driver::Webkit
     def url
       command("Url")
     end
-
+    
     def render(path)
       json = command "Render", path
       JSON.parse("[#{json}]").first
+    end
+
+    def response_headers
+      JSON.parse(command("LastResponseHeaders")).first
     end
 
     def command(name, *args)

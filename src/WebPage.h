@@ -1,5 +1,7 @@
 #include <QtWebKit>
 
+class QNetworkReply;
+
 class WebPage : public QWebPage {
   Q_OBJECT
 
@@ -9,6 +11,8 @@ class WebPage : public QWebPage {
     QVariant invokeCapybaraFunction(QString &name, QStringList &arguments);
     QString failureString();
     bool render(const QString &fileName);
+    void resetResponses();
+    QList< QList<QNetworkReply::RawHeaderPair> > responses();
 
   public slots:
     bool shouldInterruptJavaScript();
@@ -16,7 +20,8 @@ class WebPage : public QWebPage {
     void loadStarted();
     void loadFinished(bool);
     bool isLoading() const;
-
+    void requestFinished(QNetworkReply*);
+    
   protected:
     virtual void javaScriptConsoleMessage(const QString &message, int lineNumber, const QString &sourceID);
     virtual void javaScriptAlert(QWebFrame *frame, const QString &message);
@@ -26,5 +31,6 @@ class WebPage : public QWebPage {
   private:
     QString m_capybaraJavascript;
     bool m_loading;
+    QList< QList<QNetworkReply::RawHeaderPair> > m_responses_headers;
 };
 

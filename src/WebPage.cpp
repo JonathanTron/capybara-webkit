@@ -2,10 +2,11 @@
 #include "JavascriptInvocation.h"
 #include <QResource>
 #include <iostream>
+#include <QNetworkReply>
 
 WebPage::WebPage(QObject *parent) : QWebPage(parent) {
   connect(mainFrame(), SIGNAL(javaScriptWindowObjectCleared()),
-      this,        SLOT(injectJavascriptHelpers()));
+          this,        SLOT(injectJavascriptHelpers()));
   QResource javascript(":/capybara.js");
   char * javascriptString =  new char[javascript.size() + 1];
   strcpy(javascriptString, (const char *)javascript.data());
@@ -14,6 +15,7 @@ WebPage::WebPage(QObject *parent) : QWebPage(parent) {
   m_loading = false;
   connect(this, SIGNAL(loadStarted()), this, SLOT(loadStarted()));
   connect(this, SIGNAL(loadFinished(bool)), this, SLOT(loadFinished(bool)));
+  connect(networkAccessManager(), SIGNAL(finished(QNetworkReply*)), this, SLOT(requestFinished(QNetworkReply*)));
 }
 
 void WebPage::injectJavascriptHelpers() {
@@ -75,6 +77,15 @@ bool WebPage::isLoading() const {
   return m_loading;
 }
 
+void WebPage::requestFinished(QNetworkReply * reply) {
+  if (reply->error() > 0) {
+    qDebug() << reply->errorString();
+  }
+  else {
+    m_responses_headers << reply->rawHeaderPairs();
+  }
+}
+
 QString WebPage::failureString() {
   return QString("Unable to load URL: ") + mainFrame()->url().toString();
 }
@@ -107,3 +118,10 @@ bool WebPage::render(const QString &fileName) {
   return buffer.save(fileName);
 }
 
+void WebPage::resetResponses() {
+  m_responses_headers.clear();
+}
+
+QList< QList<QNetworkReply::RawHeaderPair> > WebPage::responses() {
+  return m_responses_headers;
+}

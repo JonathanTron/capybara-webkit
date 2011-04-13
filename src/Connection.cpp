@@ -10,6 +10,7 @@
 #include "Evaluate.h"
 #include "Execute.h"
 #include "Render.h"
+#include "LastResponseHeaders.h"
 
 #include <QTcpSocket>
 #include <iostream>

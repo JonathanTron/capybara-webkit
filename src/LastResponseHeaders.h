@@ -1,13 +1,12 @@
 #include "Command.h"
-#include <QStringList>
 
 class WebPage;
 
-class Node : public Command {
+class LastResponseHeaders : public Command {
   Q_OBJECT
 
   public:
-    Node(WebPage *page, QObject *parent = 0);
+    LastResponseHeaders(WebPage *page, QObject *parent = 0);
     virtual void start(QStringList &arguments);
 };
 

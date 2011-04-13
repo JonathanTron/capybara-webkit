@@ -10,6 +10,7 @@ void Reset::start(QStringList &arguments) {
   page()->triggerAction(QWebPage::Stop);
   page()->mainFrame()->setHtml("<html><body></body></html>");
   page()->networkAccessManager()->setCookieJar(new QNetworkCookieJar());
+  page()->resetResponses();
   QString response = "";
   emit finished(true, response);
 }
