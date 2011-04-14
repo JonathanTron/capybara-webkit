@@ -11,6 +11,7 @@
 #include "Execute.h"
 #include "Render.h"
 #include "LastResponseHeaders.h"
+#include "StatusCode.h"
 
 #include <QTcpSocket>
 #include <iostream>

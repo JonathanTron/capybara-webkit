@@ -39,6 +39,10 @@ class Capybara::Driver::Webkit
       JSON.parse(command("LastResponseHeaders")).first
     end
 
+    def status_code
+      command("StatusCode").to_i
+    end
+
     def command(name, *args)
       @socket.puts name
       @socket.puts args.size

@@ -13,6 +13,7 @@ WebPage::WebPage(QObject *parent) : QWebPage(parent) {
   javascriptString[javascript.size()] = 0;
   m_capybaraJavascript = javascriptString;
   m_loading = false;
+  m_status_code = 0;
   connect(this, SIGNAL(loadStarted()), this, SLOT(loadStarted()));
   connect(this, SIGNAL(loadFinished(bool)), this, SLOT(loadFinished(bool)));
   connect(networkAccessManager(), SIGNAL(finished(QNetworkReply*)), this, SLOT(requestFinished(QNetworkReply*)));
@@ -82,6 +83,9 @@ void WebPage::requestFinished(QNetworkReply * reply) {
     qDebug() << reply->errorString();
   }
   else {
+    if (!m_status_code) {
+      m_status_code = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
+    }
     m_responses_headers << reply->rawHeaderPairs();
   }
 }
@@ -120,8 +124,13 @@ bool WebPage::render(const QString &fileName) {
 
 void WebPage::resetResponses() {
   m_responses_headers.clear();
+  m_status_code = 0;
 }
 
 QList< QList<QNetworkReply::RawHeaderPair> > WebPage::responses() {
   return m_responses_headers;
+}
+
+int WebPage::statusCode(){
+  return m_status_code;
 }

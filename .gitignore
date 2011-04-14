@@ -13,3 +13,4 @@ moc_*.cpp
 pkg
 .rvmrc
 src/Info.plist
+*.orig

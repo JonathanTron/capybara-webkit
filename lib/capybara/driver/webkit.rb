@@ -49,7 +49,7 @@ class Capybara::Driver::Webkit
   end
 
   def status_code
-    raise Capybara::NotSupportedByDriverError
+    browser.status_code
   end
 
   def within_frame(frame_id)

@@ -21,7 +21,8 @@ class WebPage : public QWebPage {
     void loadFinished(bool);
     bool isLoading() const;
     void requestFinished(QNetworkReply*);
-    
+    int statusCode();
+
   protected:
     virtual void javaScriptConsoleMessage(const QString &message, int lineNumber, const QString &sourceID);
     virtual void javaScriptAlert(QWebFrame *frame, const QString &message);
@@ -32,5 +33,6 @@ class WebPage : public QWebPage {
     QString m_capybaraJavascript;
     bool m_loading;
     QList< QList<QNetworkReply::RawHeaderPair> > m_responses_headers;
+    int m_status_code;
 };
 
