@@ -63,6 +63,11 @@ describe Capybara::Driver::Webkit do
       subject.current_url.should == "http://127.0.0.1:#{port}/hello/world?success=true"
     end
 
+    it "escapes URLs" do
+      subject.visit("/hello there")
+      subject.current_url.should =~ /hello%20there/
+    end
+
     it "returns the source code for the page" do
       subject.source.should =~ %r{<html>.*greeting.*}m
     end
@@ -129,6 +134,11 @@ describe Capybara::Driver::Webkit do
     it "raises an error for failing Javascript" do
       expect { subject.execute_script(%<invalid salad>) }.
         to raise_error(Capybara::Driver::Webkit::WebkitError)
+    end
+
+    it "doesn't raise an error for Javascript that doesn't return anything" do
+      lambda { subject.execute_script(%<(function () { "returns nothing" })()>) }.
+        should_not raise_error
     end
 
     it "returns a node's tag name" do
