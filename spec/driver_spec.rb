@@ -8,27 +8,27 @@ describe Capybara::Driver::Webkit do
 
   context "hello app" do
     before(:all) do
+      @body = <<-HTML
+        <html>
+          <head>
+            <style type="text/css">
+              #display_none { display: none }
+            </style>
+          </head>
+          <body>
+            <div id="display_none">
+              <div id="invisible">Can't see me</div>
+            </div>
+            <script type="text/javascript">
+              document.write("<p id='greeting'>he" + "llo</p>");
+            </script>
+          </body>
+        </html>
+      HTML
       @app = lambda do |env|
-        body = <<-HTML
-          <html>
-            <head>
-              <style type="text/css">
-                #display_none { display: none }
-              </style>
-            </head>
-            <body>
-              <div id="display_none">
-                <div id="invisible">Can't see me</div>
-              </div>
-              <script type="text/javascript">
-                document.write("<p id='greeting'>he" + "llo</p>");
-              </script>
-            </body>
-          </html>
-        HTML
         [200,
-          { 'Content-Type' => 'text/html', 'Content-Length' => body.length.to_s },
-          [body]]
+          { 'Content-Type' => 'text/html', 'Content-Length' => @body.length.to_s },
+          [@body]]
       end
     end
 
@@ -148,6 +148,17 @@ describe Capybara::Driver::Webkit do
     it "finds visible elements" do
       subject.find("//p").first.should be_visible
       subject.find("//*[@id='invisible']").first.should_not be_visible
+    end
+    
+    it "returns the response_headers" do
+      subject.response_headers.should include({ 
+        'Content-Type' => 'text/html', 
+        'Content-Length' => @body.length.to_s
+      })
+    end
+
+    it "returns the status_code" do
+      subject.status_code.should == 200
     end
   end
 
