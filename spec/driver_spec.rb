@@ -6,6 +6,104 @@ describe Capybara::Driver::Webkit do
   before { subject.visit("/hello/world?success=true") }
   after { subject.reset! }
 
+  context "iframe app" do
+    before(:all) do
+      @app = lambda do |env|
+        params = ::Rack::Utils.parse_query(env['QUERY_STRING'])
+        if params["iframe"] == "true"
+          # We are in an iframe request.
+          p_id = "farewell"
+          msg  = "goodbye"
+          iframe = nil
+        else
+          # We are not in an iframe request and need to make an iframe!
+          p_id = "greeting"
+          msg  = "hello"
+          iframe = "<iframe id=\"f\" src=\"/?iframe=true\"></iframe>"
+        end
+        body = <<-HTML
+          <html>
+            <head>
+              <style type="text/css">
+                #display_none { display: none }
+              </style>
+            </head>
+            <body>
+              #{iframe}
+              <script type="text/javascript">
+                document.write("<p id='#{p_id}'>#{msg}</p>");
+              </script>
+            </body>
+          </html>
+        HTML
+        [200,
+          { 'Content-Type' => 'text/html', 'Content-Length' => body.length.to_s },
+          [body]]
+      end
+    end
+
+    it "finds frames by index" do
+      subject.within_frame(0) do
+        subject.find("//*[contains(., 'goodbye')]").should_not be_empty
+      end
+    end
+
+    it "finds frames by id" do
+      subject.within_frame("f") do
+        subject.find("//*[contains(., 'goodbye')]").should_not be_empty
+      end
+    end
+
+    it "raises error for missing frame by index" do
+      expect { subject.within_frame(1) { } }.
+        to raise_error(Capybara::Driver::Webkit::WebkitError)
+    end
+
+    it "raise_error for missing frame by id" do
+      expect { subject.within_frame("foo") { } }.
+        to raise_error(Capybara::Driver::Webkit::WebkitError)
+    end
+
+    it "returns an attribute's value" do
+      subject.within_frame("f") do
+        subject.find("//p").first["id"].should == "farewell"
+      end
+    end
+
+    it "returns a node's text" do
+      subject.within_frame("f") do
+        subject.find("//p").first.text.should == "goodbye"
+      end
+    end
+
+    it "returns the current URL" do
+      subject.within_frame("f") do
+        port = subject.instance_variable_get("@rack_server").port
+        subject.current_url.should == "http://127.0.0.1:#{port}/?iframe=true"
+      end
+    end
+
+    it "returns the source code for the page" do
+      subject.within_frame("f") do
+        subject.source.should =~ %r{<html>.*farewell.*}m
+      end
+    end
+
+    it "evaluates Javascript" do
+      subject.within_frame("f") do
+        result = subject.evaluate_script(%<document.getElementById('farewell').innerText>)
+        result.should == "goodbye"
+      end
+    end
+
+    it "executes Javascript" do
+      subject.within_frame("f") do
+        subject.execute_script(%<document.getElementById('farewell').innerHTML = 'yo'>)
+        subject.find("//p[contains(., 'yo')]").should_not be_empty
+      end
+    end
+  end
+
   context "hello app" do
     before(:all) do
       @body = <<-HTML

@@ -1,3 +1,5 @@
+# -*- encoding: UTF-8 -*-
+
 require 'spec_helper'
 require 'capybara-webkit'
 
@@ -50,17 +52,31 @@ describe Capybara::Session do
         body = <<-HTML
           <html><body>
             <strong>Hello</strong>
+            <span>UTF8文字列</span>
+            <input type="button" value="ボタン" />
           </body></html>
         HTML
         [200,
-          { 'Content-Type' => 'text/html', 'Content-Length' => body.length.to_s },
+          { 'Content-Type' => 'text/html; charset=UTF-8', 'Content-Length' => body.length.to_s },
           [body]]
       end
     end
 
-    it "inspects nodes" do
+    before do
       subject.visit("/")
+    end
+
+    it "inspects nodes" do
       subject.all(:xpath, "//strong").first.inspect.should include("strong")
+    end
+
+    it "can read utf8 string" do
+      utf8str = subject.all(:xpath, "//span").first.text
+      utf8str.should eq('UTF8文字列')
+    end
+
+    it "can click utf8 string" do
+      subject.click_button('ボタン')
     end
   end
 end

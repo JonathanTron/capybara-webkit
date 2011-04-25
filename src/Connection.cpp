@@ -9,6 +9,7 @@
 #include "Source.h"
 #include "Evaluate.h"
 #include "Execute.h"
+#include "FrameFocus.h"
 #include "Render.h"
 #include "LastResponseHeaders.h"
 #include "StatusCode.h"
@@ -72,7 +73,7 @@ void Connection::processArgument(const char *data) {
   } else if (m_expectingDataSize == -1) {
     m_expectingDataSize = QString(data).toInt();
   } else {
-    m_arguments.append(data);
+    m_arguments.append(QString::fromUtf8(data));
   }
 
   if (m_arguments.length() == m_argumentsExpected) {
@@ -126,8 +127,9 @@ void Connection::writeResponse(bool success, QString &response) {
   else
     m_socket->write("failure\n");
 
-  QString responseLength = QString::number(response.size()) + "\n";
+  QByteArray response_utf8 = response.toUtf8();
+  QString responseLength = QString::number(response_utf8.size()) + "\n";
   m_socket->write(responseLength.toAscii());
-  m_socket->write(response.toAscii());
+  m_socket->write(response_utf8);
 }
 

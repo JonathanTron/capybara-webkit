@@ -43,6 +43,16 @@ class Capybara::Driver::Webkit
       command("StatusCode").to_i
     end
 
+    def frame_focus(frame_id_or_index=nil)
+      if frame_id_or_index.is_a? Fixnum
+        command("FrameFocus", "", frame_id_or_index.to_s)
+      elsif frame_id_or_index
+        command("FrameFocus", frame_id_or_index)
+      else
+        command("FrameFocus")
+      end
+    end
+
     def command(name, *args)
       @socket.puts name
       @socket.puts args.size

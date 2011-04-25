@@ -20,6 +20,7 @@ class WebPage : public QWebPage {
     void loadStarted();
     void loadFinished(bool);
     bool isLoading() const;
+    void frameCreated(QWebFrame *);
     void requestFinished(QNetworkReply*);
     int statusCode();
 

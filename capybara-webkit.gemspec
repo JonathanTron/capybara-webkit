@@ -1,7 +1,8 @@
 Gem::Specification.new do |s|
   s.name = "capybara-webkit"
-  s.version = "0.1.6"
-  s.authors = ["thoughtbot", "Joe Ferris", "Jason Morrison", "Tristan Dunn"]
+  s.version = "0.2.0"
+  s.authors = ["thoughtbot", "Joe Ferris", "Jason Morrison", "Tristan Dunn",
+               "Joshua Clayton", "Yuichi Tateno", "Aaron Gibralter"]
   s.email = "support@thoughtbot.com"
   s.files = `git ls-files`.split("\n")
   s.test_files = `git ls-files -- {spec,features}/*`.split("\n")
@@ -10,8 +11,6 @@ Gem::Specification.new do |s|
   s.rubygems_version = "1.3.5"
   s.summary = "Headless Webkit driver for Capybara"
   s.add_runtime_dependency "capybara", "~> 0.4.1"
-  s.add_runtime_dependency "rake"
-  s.add_development_dependency "sinatra", "~> 1.1.2"
   s.extensions = "extconf.rb"
 end
 

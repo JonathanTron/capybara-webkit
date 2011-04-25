@@ -8,7 +8,7 @@ Visit::Visit(WebPage *page, QObject *parent) : Command(page, parent) {
 
 void Visit::start(QStringList &arguments) {
   page()->resetResponses();
-  page()->mainFrame()->setUrl(QUrl(arguments[0]));
+  page()->currentFrame()->setUrl(QUrl(arguments[0]));
 }
 
 void Visit::loadFinished(bool success) {

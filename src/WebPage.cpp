@@ -5,8 +5,6 @@
 #include <QNetworkReply>
 
 WebPage::WebPage(QObject *parent) : QWebPage(parent) {
-  connect(mainFrame(), SIGNAL(javaScriptWindowObjectCleared()),
-          this,        SLOT(injectJavascriptHelpers()));
   QResource javascript(":/capybara.js");
   char * javascriptString =  new char[javascript.size() + 1];
   strcpy(javascriptString, (const char *)javascript.data());
@@ -16,11 +14,19 @@ WebPage::WebPage(QObject *parent) : QWebPage(parent) {
   m_status_code = 0;
   connect(this, SIGNAL(loadStarted()), this, SLOT(loadStarted()));
   connect(this, SIGNAL(loadFinished(bool)), this, SLOT(loadFinished(bool)));
+  connect(this, SIGNAL(frameCreated(QWebFrame *)),
+          this, SLOT(frameCreated(QWebFrame *)));
   connect(networkAccessManager(), SIGNAL(finished(QNetworkReply*)), this, SLOT(requestFinished(QNetworkReply*)));
 }
 
+void WebPage::frameCreated(QWebFrame * frame) {
+  connect(frame, SIGNAL(javaScriptWindowObjectCleared()),
+          this,  SLOT(injectJavascriptHelpers()));
+}
+
 void WebPage::injectJavascriptHelpers() {
-  mainFrame()->evaluateJavaScript(m_capybaraJavascript);
+  QWebFrame* frame = qobject_cast<QWebFrame *>(QObject::sender());
+  frame->evaluateJavaScript(m_capybaraJavascript);
 }
 
 bool WebPage::shouldInterruptJavaScript() {
@@ -31,9 +37,9 @@ QVariant WebPage::invokeCapybaraFunction(const char *name, QStringList &argument
   QString qname(name);
   QString objectName("CapybaraInvocation");
   JavascriptInvocation invocation(qname, arguments);
-  mainFrame()->addToJavaScriptWindowObject(objectName, &invocation);
+  currentFrame()->addToJavaScriptWindowObject(objectName, &invocation);
   QString javascript = QString("Capybara.invoke()");
-  return mainFrame()->evaluateJavaScript(javascript);
+  return currentFrame()->evaluateJavaScript(javascript);
 }
 
 QVariant WebPage::invokeCapybaraFunction(QString &name, QStringList &arguments) {
@@ -59,10 +65,10 @@ bool WebPage::javaScriptConfirm(QWebFrame *frame, const QString &message) {
 
 bool WebPage::javaScriptPrompt(QWebFrame *frame, const QString &message, const QString &defaultValue, QString *result) {
   Q_UNUSED(frame)
-    Q_UNUSED(message)
-    Q_UNUSED(defaultValue)
-    Q_UNUSED(result)
-    return false;
+  Q_UNUSED(message)
+  Q_UNUSED(defaultValue)
+  Q_UNUSED(result)
+  return false;
 }
 
 void WebPage::loadStarted() {
@@ -91,7 +97,7 @@ void WebPage::requestFinished(QNetworkReply * reply) {
 }
 
 QString WebPage::failureString() {
-  return QString("Unable to load URL: ") + mainFrame()->url().toString();
+  return QString("Unable to load URL: ") + currentFrame()->url().toString();
 }
 
 /*
@@ -104,7 +110,7 @@ bool WebPage::render(const QString &fileName) {
   dir.mkpath(fileInfo.absolutePath());
 
   QSize viewportSize = this->viewportSize();
-  QSize pageSize = this->mainFrame()->contentsSize();
+  QSize pageSize = currentFrame()->contentsSize();
   if (pageSize.isEmpty())
     return false;
 
@@ -115,7 +121,7 @@ bool WebPage::render(const QString &fileName) {
   p.setRenderHint(QPainter::TextAntialiasing, true);
   p.setRenderHint(QPainter::SmoothPixmapTransform, true);
   this->setViewportSize(pageSize);
-  this->mainFrame()->render(&p);
+  currentFrame()->render(&p);
   p.end();
   this->setViewportSize(viewportSize);
 
