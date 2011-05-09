@@ -508,7 +508,7 @@ describe Capybara::Driver::Webkit do
 
       draggable.drag_to(container)
 
-      subject.find("//*[@class='triggered']").size.should == 2
+      subject.find("//*[@class='triggered']").size.should == 1
     end
   end
 
@@ -554,6 +554,67 @@ describe Capybara::Driver::Webkit do
     it "waits for a request to load" do
       subject.find("//input").first.click
       subject.find("//p").first.text.should == "/next"
+    end
+  end
+
+  context "error app" do
+    before(:all) do
+      @app = lambda do |env|
+        if env['PATH_INFO'] == "/error"
+          [404, {}, []]
+        else
+          body = <<-HTML
+            <html><body>
+              <form action="/error"><input type="submit"/></form>
+            </body></html>
+          HTML
+          [200,
+            { 'Content-Type' => 'text/html', 'Content-Length' => body.length.to_s },
+            [body]]
+        end
+      end
+    end
+
+    it "raises a webkit error for the requested url" do
+      expect {
+        subject.find("//input").first.click
+        wait_for_error_to_complete
+        subject.find("//body")
+      }.
+        to raise_error(Capybara::Driver::Webkit::WebkitError, %r{/error})
+    end
+
+    def wait_for_error_to_complete
+      sleep(0.5)
+    end
+  end
+
+  context "slow error app" do
+    before(:all) do
+      @app = lambda do |env|
+        if env['PATH_INFO'] == "/error"
+          body = "error"
+          sleep(1)
+          [304, {}, []]
+        else
+          body = <<-HTML
+            <html><body>
+              <form action="/error"><input type="submit"/></form>
+              <p>hello</p>
+            </body></html>
+          HTML
+          [200,
+            { 'Content-Type' => 'text/html', 'Content-Length' => body.length.to_s },
+            [body]]
+        end
+      end
+    end
+
+    it "raises a webkit error and then continues" do
+      subject.find("//input").first.click
+      expect { subject.find("//p") }.to raise_error(Capybara::Driver::Webkit::WebkitError)
+      subject.visit("/")
+      subject.find("//p").first.text.should == "hello"
     end
   end
 

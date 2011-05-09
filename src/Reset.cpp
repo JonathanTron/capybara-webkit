@@ -11,7 +11,6 @@ void Reset::start(QStringList &arguments) {
   page()->currentFrame()->setHtml("<html><body></body></html>");
   page()->networkAccessManager()->setCookieJar(new QNetworkCookieJar());
   page()->resetResponses();
-  QString response = "";
-  emit finished(true, response);
+  emit finished(new Response(true));
 }
 

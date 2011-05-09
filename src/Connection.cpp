@@ -23,7 +23,10 @@ Connection::Connection(QTcpSocket *socket, WebPage *page, QObject *parent) :
   m_page = page;
   m_command = NULL;
   m_expectingDataSize = -1;
+  m_pageSuccess = true;
+  m_commandWaiting = false;
   connect(m_socket, SIGNAL(readyRead()), this, SLOT(checkNext()));
+  connect(m_page, SIGNAL(loadFinished(bool)), this, SLOT(pendingLoadFinished(bool)));
 }
 
 void Connection::checkNext() {
@@ -78,25 +81,32 @@ void Connection::processArgument(const char *data) {
 
   if (m_arguments.length() == m_argumentsExpected) {
     if (m_page->isLoading())
-      connect(m_page, SIGNAL(loadFinished(bool)), this, SLOT(pendingLoadFinished(bool)));
+      m_commandWaiting = true;
     else
       startCommand();
   }
 }
 
 void Connection::startCommand() {
-  m_command = createCommand(m_commandName.toAscii().constData());
-  if (m_command) {
-    connect(m_command,
-            SIGNAL(finished(bool, QString &)),
-            this,
-            SLOT(finishCommand(bool, QString &)));
-    m_command->start(m_arguments);
+  m_commandWaiting = false;
+  if (m_pageSuccess) {
+    m_command = createCommand(m_commandName.toAscii().constData());
+    if (m_command) {
+      connect(m_command,
+              SIGNAL(finished(Response *)),
+              this,
+              SLOT(finishCommand(Response *)));
+      m_command->start(m_arguments);
+    } else {
+      QString failure = QString("Unknown command: ") +  m_commandName + "\n";
+      writeResponse(new Response(false, failure));
+    }
+    m_commandName = QString();
   } else {
-    QString failure = QString("Unknown command: ") +  m_commandName + "\n";
-    writeResponse(false, failure);
+    m_pageSuccess = true;
+    QString message = m_page->failureString();
+    writeResponse(new Response(false, message));
   }
-  m_commandName = QString();
 }
 
 Command *Connection::createCommand(const char *name) {
@@ -105,31 +115,31 @@ Command *Connection::createCommand(const char *name) {
 }
 
 void Connection::pendingLoadFinished(bool success) {
-  m_page->disconnect(this, SLOT(pendingLoadFinished(bool)));
-  if (success) {
+  m_pageSuccess = success;
+  if (m_commandWaiting)
     startCommand();
-  } else {
-    QString response = m_page->failureString();
-    finishCommand(false, response);
-  }
 }
 
-void Connection::finishCommand(bool success, QString &response) {
+void Connection::finishCommand(Response *response) {
   m_command->deleteLater();
   m_command = NULL;
-  m_arguments.clear();
-  writeResponse(success, response);
+  writeResponse(response);
 }
 
-void Connection::writeResponse(bool success, QString &response) {
-  if (success)
+void Connection::writeResponse(Response *response) {
+  if (response->isSuccess())
     m_socket->write("ok\n");
   else
     m_socket->write("failure\n");
 
-  QByteArray response_utf8 = response.toUtf8();
-  QString responseLength = QString::number(response_utf8.size()) + "\n";
-  m_socket->write(responseLength.toAscii());
-  m_socket->write(response_utf8);
+  QByteArray messageUtf8 = response->message().toUtf8();
+  QString messageLength = QString::number(messageUtf8.size()) + "\n";
+  m_socket->write(messageLength.toAscii());
+  m_socket->write(messageUtf8);
+  delete response;
+
+  m_arguments.clear();
+  m_commandName = QString();
+  m_argumentsExpected = -1;
 }
 

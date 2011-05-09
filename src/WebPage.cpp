@@ -6,10 +6,15 @@
 
 WebPage::WebPage(QObject *parent) : QWebPage(parent) {
   QResource javascript(":/capybara.js");
-  char * javascriptString =  new char[javascript.size() + 1];
-  strcpy(javascriptString, (const char *)javascript.data());
-  javascriptString[javascript.size()] = 0;
-  m_capybaraJavascript = javascriptString;
+  if (javascript.isCompressed()) {
+    QByteArray uncompressedBytes(qUncompress(javascript.data(), javascript.size()));
+    m_capybaraJavascript = QString(uncompressedBytes);
+  } else {
+    char * javascriptString =  new char[javascript.size() + 1];
+    strcpy(javascriptString, (const char *)javascript.data());
+    javascriptString[javascript.size()] = 0;
+    m_capybaraJavascript = javascriptString;
+  }
   m_loading = false;
   m_status_code = 0;
   connect(this, SIGNAL(loadStarted()), this, SLOT(loadStarted()));
@@ -97,7 +102,7 @@ void WebPage::requestFinished(QNetworkReply * reply) {
 }
 
 QString WebPage::failureString() {
-  return QString("Unable to load URL: ") + currentFrame()->url().toString();
+  return QString("Unable to load URL: ") + currentFrame()->requestedUrl().toString();
 }
 
 /*
