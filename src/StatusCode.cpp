@@ -8,6 +8,6 @@ void StatusCode::start(QStringList &arguments) {
   Q_UNUSED(arguments);
   QString response;
   response.setNum(page()->statusCode());
-  emit finished(true, response);
+  emit finished(new Response(true, response));
 }
 

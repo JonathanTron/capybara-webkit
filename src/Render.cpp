@@ -8,9 +8,6 @@ void Render::start(QStringList &arguments) {
   QStringList functionArguments(arguments);
   QString functionName = functionArguments.takeFirst();
   bool result = page()->render( functionName );
-  QString t = QString("true");
-  QString f = QString("false");
-
-  emit finished(true, result ? t : f);
+  emit finished(new Response(result, result ? "true" : "false"));
 }
 

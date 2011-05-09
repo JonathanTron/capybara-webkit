@@ -31,5 +31,5 @@ void LastResponseHeaders::start(QStringList &arguments) {
   }
   jsonStream << "]";
 
-  emit finished(true, json);
+  emit finished(new Response(true, json));
 }
