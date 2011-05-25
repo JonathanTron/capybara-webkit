@@ -11,6 +11,7 @@ qrc_*
 moc_*.cpp
 .bundle
 pkg
+src/webkit_server
 .rvmrc
 src/Info.plist
 *.orig
