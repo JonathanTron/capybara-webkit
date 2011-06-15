@@ -167,6 +167,11 @@ describe Capybara::Driver::Webkit do
       subject.current_url.should =~ /hello%20there/
     end
 
+    it "visits a page with an anchor" do
+      subject.visit("/hello#display_none")
+      subject.current_url.should =~ /hello#display_none/
+    end
+
     it "returns the source code for the page" do
       subject.source.should =~ %r{<html>.*greeting.*}m
     end
@@ -473,12 +478,12 @@ describe Capybara::Driver::Webkit do
 
     it "triggers radio input events" do
       subject.find("//input[@type='radio']").first.set(true)
-      subject.find("//li").map(&:text).should == %w(click)
+      subject.find("//li").map(&:text).should == %w(click change)
     end
 
     it "triggers checkbox events" do
       subject.find("//input[@type='checkbox']").first.set(true)
-      subject.find("//li").map(&:text).should == %w(click)
+      subject.find("//li").map(&:text).should == %w(click change)
     end
   end
 
