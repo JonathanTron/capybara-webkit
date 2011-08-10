@@ -13,6 +13,10 @@ describe Capybara::Driver::Webkit do
   it_should_behave_like "driver with cookies support"
   it_should_behave_like "driver with header support"
   it_should_behave_like "driver with status code support"
+  
+  it "returns the rack server port" do
+    @driver.server_port.should  eq(@driver.instance_variable_get(:@rack_server).port)
+  end
 
   # Can't support:
   # it_should_behave_like "driver with frame support"

@@ -56,12 +56,12 @@ describe Capybara::Driver::Webkit do
 
     it "raises error for missing frame by index" do
       expect { subject.within_frame(1) { } }.
-        to raise_error(Capybara::Driver::Webkit::WebkitError)
+        to raise_error(Capybara::Driver::Webkit::WebkitInvalidResponseError)
     end
 
     it "raise_error for missing frame by id" do
       expect { subject.within_frame("foo") { } }.
-        to raise_error(Capybara::Driver::Webkit::WebkitError)
+        to raise_error(Capybara::Driver::Webkit::WebkitInvalidResponseError)
     end
 
     it "returns an attribute's value" do
@@ -118,6 +118,7 @@ describe Capybara::Driver::Webkit do
               <div id="invisible">Can't see me</div>
             </div>
             <input type="text" disabled="disabled"/>
+            <input id="checktest" type="checkbox" checked="checked"/>
             <script type="text/javascript">
               document.write("<p id='greeting'>he" + "llo</p>");
             </script>
@@ -142,7 +143,7 @@ describe Capybara::Driver::Webkit do
 
     it "raises an error for an invalid xpath query" do
       expect { subject.find("totally invalid salad") }.
-        to raise_error(Capybara::Driver::Webkit::WebkitError, /xpath/i)
+        to raise_error(Capybara::Driver::Webkit::WebkitInvalidResponseError, /xpath/i)
     end
 
     it "returns an attribute's value" do
@@ -174,10 +175,6 @@ describe Capybara::Driver::Webkit do
 
     it "returns the source code for the page" do
       subject.source.should =~ %r{<html>.*greeting.*}m
-    end
-
-    it "aliases body as source" do
-      subject.body.should == subject.source
     end
 
     it "evaluates Javascript and returns a string" do
@@ -237,7 +234,7 @@ describe Capybara::Driver::Webkit do
 
     it "raises an error for failing Javascript" do
       expect { subject.execute_script(%<invalid salad>) }.
-        to raise_error(Capybara::Driver::Webkit::WebkitError)
+        to raise_error(Capybara::Driver::Webkit::WebkitInvalidResponseError)
     end
 
     it "doesn't raise an error for Javascript that doesn't return anything" do
@@ -253,13 +250,18 @@ describe Capybara::Driver::Webkit do
       subject.find("//input").first.should be_disabled
     end
 
+    it "reads checked property" do
+      subject.find("//input[@id='checktest']").first.should be_checked
+    end
+
     it "finds visible elements" do
       subject.find("//p").first.should be_visible
       subject.find("//*[@id='invisible']").first.should_not be_visible
     end
     
     it "returns the response_headers" do
-      subject.response_headers.should include({ 
+      headers = subject.response_headers
+      headers.should include({ 
         'Content-Type' => 'text/html', 
         'Content-Length' => @body.length.to_s
       })
@@ -322,6 +324,12 @@ describe Capybara::Driver::Webkit do
       input.value.should == "newvalue"
     end
 
+    it "sets an input's nil value" do
+      input = subject.find("//input").first
+      input.set(nil)
+      input.value.should == ""
+    end
+
     it "sets a select's value" do
       select = subject.find("//select").first
       select.set("Monkey")
@@ -376,28 +384,36 @@ describe Capybara::Driver::Webkit do
       checked_box['checked'].should be_true
     end
 
+    it "knows a checked box is checked using checked?" do
+      checked_box.should be_checked
+    end
+
     it "knows an unchecked box is unchecked" do
       unchecked_box['checked'].should_not be_true
     end
 
+    it "knows an unchecked box is unchecked using checked?" do
+      unchecked_box.should_not be_checked
+    end
+
     it "checks an unchecked box" do
       unchecked_box.set(true)
-      unchecked_box['checked'].should be_true
+      unchecked_box.should be_checked
     end
 
     it "unchecks a checked box" do
       checked_box.set(false)
-      checked_box['checked'].should_not be_true
+      checked_box.should_not be_checked
     end
 
     it "leaves a checked box checked" do
       checked_box.set(true)
-      checked_box['checked'].should be_true
+      checked_box.should be_checked
     end
 
     it "leaves an unchecked box unchecked" do
       unchecked_box.set(false)
-      unchecked_box['checked'].should_not be_true
+      unchecked_box.should_not be_checked
     end
 
     let(:enabled_input)  { subject.find("//input[@name='foo']").first }
@@ -631,7 +647,7 @@ describe Capybara::Driver::Webkit do
         wait_for_error_to_complete
         subject.find("//body")
       }.
-        to raise_error(Capybara::Driver::Webkit::WebkitError, %r{/error})
+        to raise_error(Capybara::Driver::Webkit::WebkitInvalidResponseError, %r{/error})
     end
 
     def wait_for_error_to_complete
@@ -662,7 +678,7 @@ describe Capybara::Driver::Webkit do
 
     it "raises a webkit error and then continues" do
       subject.find("//input").first.click
-      expect { subject.find("//p") }.to raise_error(Capybara::Driver::Webkit::WebkitError)
+      expect { subject.find("//p") }.to raise_error(Capybara::Driver::Webkit::WebkitInvalidResponseError)
       subject.visit("/")
       subject.find("//p").first.text.should == "hello"
     end
@@ -690,6 +706,132 @@ describe Capybara::Driver::Webkit do
 
     it "doesn't crash from alerts" do
       subject.find("//p").first.text.should == "success"
+    end
+  end
+
+  context "custom header" do
+    before(:all) do
+      @app = lambda do |env|
+        body = <<-HTML
+          <html><body>
+            <p id="user-agent">#{env['HTTP_USER_AGENT']}</p>
+            <p id="x-capybara-webkit-header">#{env['HTTP_X_CAPYBARA_WEBKIT_HEADER']}</p>
+            <p id="accept">#{env['HTTP_ACCEPT']}</p>
+            <a href="/">/</a>
+          </body></html>
+        HTML
+        [200,
+          { 'Content-Type' => 'text/html', 'Content-Length' => body.length.to_s },
+          [body]]
+      end
+    end
+
+    before do
+      subject.header('user-agent', 'capybara-webkit/custom-user-agent')
+      subject.header('x-capybara-webkit-header', 'x-capybara-webkit-header')
+      subject.header('accept', 'text/html')
+      subject.visit('/')
+    end
+
+    it "can set user_agent" do
+      subject.find('id("user-agent")').first.text.should == 'capybara-webkit/custom-user-agent'
+      subject.evaluate_script('navigator.userAgent').should == 'capybara-webkit/custom-user-agent'
+    end
+
+    it "keep user_agent in next page" do
+      subject.find("//a").first.click
+      subject.find('id("user-agent")').first.text.should == 'capybara-webkit/custom-user-agent'
+      subject.evaluate_script('navigator.userAgent').should == 'capybara-webkit/custom-user-agent'
+    end
+
+    it "can set custom header" do
+      subject.find('id("x-capybara-webkit-header")').first.text.should == 'x-capybara-webkit-header'
+    end
+
+    it "can set Accept header" do
+      subject.find('id("accept")').first.text.should == 'text/html'
+    end
+
+    it "can reset all custom header" do
+      subject.reset!
+      subject.visit('/')
+      subject.find('id("user-agent")').first.text.should_not == 'capybara-webkit/custom-user-agent'
+      subject.evaluate_script('navigator.userAgent').should_not == 'capybara-webkit/custom-user-agent'
+      subject.find('id("x-capybara-webkit-header")').first.text.should be_empty
+      subject.find('id("accept")').first.text.should_not == 'text/html'
+    end
+  end
+
+  context "no response app" do
+    before(:all) do
+      @app = lambda do |env|
+        body = <<-HTML
+          <html><body>
+            <form action="/error"><input type="submit"/></form>
+          </body></html>
+        HTML
+        [200,
+          { 'Content-Type' => 'text/html', 'Content-Length' => body.length.to_s },
+          [body]]
+      end
+    end
+    
+    it "raises a webkit error for the requested url" do
+      make_the_server_go_away
+      expect {
+        subject.find("//body")
+      }.
+       to raise_error(Capybara::Driver::Webkit::WebkitNoResponseError, %r{response})
+      make_the_server_come_back
+    end
+
+    def make_the_server_come_back
+      subject.browser.instance_variable_get(:@socket).unstub!(:gets)
+      subject.browser.instance_variable_get(:@socket).unstub!(:puts)
+      subject.browser.instance_variable_get(:@socket).unstub!(:print)
+    end
+ 
+    def make_the_server_go_away
+      subject.browser.instance_variable_get(:@socket).stub!(:gets).and_return(nil)
+      subject.browser.instance_variable_get(:@socket).stub!(:puts)
+      subject.browser.instance_variable_get(:@socket).stub!(:print)
+    end
+  end
+
+  context "with socket debugger" do
+    let(:socket_debugger_class){ Capybara::Driver::Webkit::SocketDebugger }
+    let(:browser_with_debugger){
+      Capybara::Driver::Webkit::Browser.new(:socket_class => socket_debugger_class)
+    }
+    let(:driver_with_debugger){ Capybara::Driver::Webkit.new(@app, :browser => browser_with_debugger) }
+
+    before(:all) do
+      @app = lambda do |env|
+        body = <<-HTML
+          <html><body>
+            <div id="parent">
+              <div class="find">Expected</div>
+            </div>
+            <div class="find">Unexpected</div>
+          </body></html>
+        HTML
+        [200,
+          { 'Content-Type' => 'text/html', 'Content-Length' => body.length.to_s },
+          [body]]
+      end
+    end
+
+    it "prints out sent content" do
+      socket_debugger_class.any_instance.stub(:received){|content| content }
+      sent_content = ['Find', 1, 17, "//*[@id='parent']"]
+      socket_debugger_class.any_instance.should_receive(:sent).exactly(sent_content.size).times
+      driver_with_debugger.find("//*[@id='parent']")
+    end
+
+    it "prints out received content" do
+      socket_debugger_class.any_instance.stub(:sent)
+      socket_debugger_class.any_instance.should_receive(:received).at_least(:once).and_return("ok")
+      driver_with_debugger.find("//*[@id='parent']")
     end
   end
 end

@@ -1,5 +1,6 @@
 #include "WebPage.h"
 #include "JavascriptInvocation.h"
+#include "NetworkAccessManager.h"
 #include <QResource>
 #include <iostream>
 #include <QNetworkReply>
@@ -17,11 +18,26 @@ WebPage::WebPage(QObject *parent) : QWebPage(parent) {
   }
   m_loading = false;
   m_status_code = 0;
+
+  this->setNetworkAccessManager(new NetworkAccessManager());
+
   connect(this, SIGNAL(loadStarted()), this, SLOT(loadStarted()));
   connect(this, SIGNAL(loadFinished(bool)), this, SLOT(loadFinished(bool)));
   connect(this, SIGNAL(frameCreated(QWebFrame *)),
           this, SLOT(frameCreated(QWebFrame *)));
   connect(networkAccessManager(), SIGNAL(finished(QNetworkReply*)), this, SLOT(requestFinished(QNetworkReply*)));
+}
+
+QString WebPage::userAgentForUrl(const QUrl &url ) const {
+  if (!m_userAgent.isEmpty()) {
+    return m_userAgent;
+  } else {
+    return QWebPage::userAgentForUrl(url);
+  }
+}
+
+void WebPage::setUserAgent(QString userAgent) {
+  m_userAgent = userAgent;
 }
 
 void WebPage::frameCreated(QWebFrame * frame) {
@@ -89,6 +105,57 @@ bool WebPage::isLoading() const {
   return m_loading;
 }
 
+QString WebPage::failureString() {
+  return QString("Unable to load URL: ") + currentFrame()->requestedUrl().toString();
+}
+
+bool WebPage::render(const QString &fileName) {
+  QFileInfo fileInfo(fileName);
+  QDir dir;
+  dir.mkpath(fileInfo.absolutePath());
+
+  QSize viewportSize = this->viewportSize();
+  QSize pageSize = this->mainFrame()->contentsSize();
+  if (pageSize.isEmpty()) {
+    return false;
+  }
+
+  QImage buffer(pageSize, QImage::Format_ARGB32);
+  buffer.fill(qRgba(255, 255, 255, 0));
+
+  QPainter p(&buffer);
+  p.setRenderHint( QPainter::Antialiasing,          true);
+  p.setRenderHint( QPainter::TextAntialiasing,      true);
+  p.setRenderHint( QPainter::SmoothPixmapTransform, true);
+
+  this->setViewportSize(pageSize);
+  this->mainFrame()->render(&p);
+  p.end();
+  this->setViewportSize(viewportSize);
+
+  return buffer.save(fileName);
+}
+
+QString WebPage::chooseFile(QWebFrame *parentFrame, const QString &suggestedFile) {
+  Q_UNUSED(parentFrame);
+  Q_UNUSED(suggestedFile);
+
+  return getLastAttachedFileName();
+}
+
+bool WebPage::extension(Extension extension, const ExtensionOption *option, ExtensionReturn *output) {
+  if (extension == ChooseMultipleFilesExtension) {
+    QStringList names = QStringList() << getLastAttachedFileName();
+    static_cast<ChooseMultipleFilesExtensionReturn*>(output)->fileNames = names;
+    return true;
+  }
+  return false;
+}
+
+QString WebPage::getLastAttachedFileName() {
+  return currentFrame()->evaluateJavaScript(QString("Capybara.lastAttachedFile")).toString();
+}
+
 void WebPage::requestFinished(QNetworkReply * reply) {
   if (reply->error() > 0) {
     qDebug() << reply->errorString();
@@ -99,38 +166,6 @@ void WebPage::requestFinished(QNetworkReply * reply) {
     }
     m_responses_headers << reply->rawHeaderPairs();
   }
-}
-
-QString WebPage::failureString() {
-  return QString("Unable to load URL: ") + currentFrame()->requestedUrl().toString();
-}
-
-/*
- * Swiped from Phantom.js
- * Check out their code for rendering to PDFs and GIFs
- */
-bool WebPage::render(const QString &fileName) {
-  QFileInfo fileInfo(fileName);
-  QDir dir;
-  dir.mkpath(fileInfo.absolutePath());
-
-  QSize viewportSize = this->viewportSize();
-  QSize pageSize = currentFrame()->contentsSize();
-  if (pageSize.isEmpty())
-    return false;
-
-  QImage buffer(pageSize, QImage::Format_ARGB32);
-  buffer.fill(qRgba(255, 255, 255, 0));
-  QPainter p(&buffer);
-  p.setRenderHint(QPainter::Antialiasing, true);
-  p.setRenderHint(QPainter::TextAntialiasing, true);
-  p.setRenderHint(QPainter::SmoothPixmapTransform, true);
-  this->setViewportSize(pageSize);
-  currentFrame()->render(&p);
-  p.end();
-  this->setViewportSize(viewportSize);
-
-  return buffer.save(fileName);
 }
 
 void WebPage::resetResponses() {

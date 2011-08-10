@@ -1,9 +1,13 @@
 require "capybara"
 require "capybara/driver/webkit/node"
 require "capybara/driver/webkit/browser"
+require "capybara/driver/webkit/socket_debugger"
 
 class Capybara::Driver::Webkit
-  class WebkitError < StandardError
+  class WebkitInvalidResponseError < StandardError
+  end
+
+  class WebkitNoResponseError < StandardError
   end
 
   attr_reader :browser
@@ -33,11 +37,16 @@ class Capybara::Driver::Webkit
   end
 
   def body
-    source
+    browser.body
+  end
+
+  def header(key, value)
+    browser.header(key, value)
   end
 
   def execute_script(script)
-    browser.execute_script script
+    value = browser.execute_script script
+    value.empty? ? nil : value
   end
 
   def evaluate_script(script)
@@ -78,6 +87,17 @@ class Capybara::Driver::Webkit
 
   def has_shortcircuit_timeout?
     false
+  end
+
+  def render(path, options={})
+    options[:width]  ||= 1000
+    options[:height] ||= 10
+
+    browser.render path, options[:width], options[:height]
+  end
+
+  def server_port
+    @rack_server.port
   end
 
   private

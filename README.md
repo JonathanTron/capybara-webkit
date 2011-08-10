@@ -3,14 +3,36 @@ capybara-webkit
 
 A [capybara](https://github.com/jnicklas/capybara) driver that uses [WebKit](http://webkit.org) via [QtWebKit](http://doc.qt.nokia.com/4.7/qtwebkit.html).
 
-Dependencies
-------------
+Dependent on Qt
+---------------
 
 capybara-webkit depends on a WebKit implementation from Qt, a cross-platform development toolkit. You'll need to download the Qt libraries to build and install the gem.
 
-If you're on OS X, [download the non-debug Cocoa package](http://qt.nokia.com/downloads/qt-for-open-source-cpp-development-on-mac-os-x). Note that installing Qt via homebrew takes more than an hour, so we don't recommend it.
+OS X Lion 10.7:
 
-If you're on Ubuntu, you can install the libqt4-dev package. For other Linux distributions, [download this package](http://qt.nokia.com/downloads/linux-x11-cpp).
+Install Qt via [homebrew](http://mxcl.github.com/homebrew/)(can take more than an hour) using:
+
+    brew install qt --build-from-source
+
+OS X < 10.7:
+
+[Download the non-debug Cocoa package](http://qt.nokia.com/downloads/qt-for-open-source-cpp-development-on-mac-os-x).
+
+Ubuntu:
+
+    apt-get install libqt4-dev
+
+Fedora:
+
+    yum install qt-webkit-devel
+
+Gentoo Linux:
+
+    emerge x11-libs/qt-webkit
+
+Other Linux distributions:
+
+[Download this package](http://qt.nokia.com/downloads/linux-x11-cpp).
 
 CI
 --
@@ -32,14 +54,27 @@ Set your Capybara Javascript driver to webkit:
 
 Tag scenarios with @javascript to run them using a headless WebKit browser.
 
+Contributing
+------------
+
+See the CONTRIBUTING document.
+
 About
 -----
 
 The capybara WebKit driver was written by Joe Ferris, Tristan Dunn, and Jason Morrison from [thoughtbot, inc](http://thoughtbot.com/community).
 
+Code for rendering the current webpage to a PNG is borrowed from Phantom.js' implementation.
+
 ![thoughtbot](http://thoughtbot.com/images/tm/logo.png)
 
 The names and logos for thoughtbot are trademarks of thoughtbot, inc.
+
+Notes
+-----
+
+This capybara WebKit driver will listen on port 8200, this may conflict
+with other services.
 
 License
 -------
