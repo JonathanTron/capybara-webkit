@@ -158,8 +158,10 @@ QString WebPage::getLastAttachedFileName() {
 
 void WebPage::requestFinished(QNetworkReply * reply) {
   QNetworkReply::NetworkError error = reply->error();
-  if (error > 0 && error != QNetworkReply::OperationCanceledError) {
-    qDebug() << "Request error: " << reply->errorString();
+  if (error > 0 
+    && error != QNetworkReply::OperationCanceledError
+    && error != QNetworkReply::RemoteHostClosedError) {
+    qDebug() << "Request error: " << reply->errorString() << " code: " << error;
   }
   else {
     if (!m_status_code) {
