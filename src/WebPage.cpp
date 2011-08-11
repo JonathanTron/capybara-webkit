@@ -157,8 +157,9 @@ QString WebPage::getLastAttachedFileName() {
 }
 
 void WebPage::requestFinished(QNetworkReply * reply) {
-  if (reply->error() > 0) {
-    qDebug() << reply->errorString();
+  QNetworkReply::NetworkError error = reply->error();
+  if (error > 0 && error != QNetworkReply::OperationCanceledError) {
+    qDebug() << "Request error: " << reply->errorString();
   }
   else {
     if (!m_status_code) {
